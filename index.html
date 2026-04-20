@@ -1,60 +1,350 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ANIMA — AI Avatar</title>
-  <link rel="stylesheet" href="style.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ANIMA — Connect</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #060910;
+      --surface: #0d1122;
+      --border: #1a2540;
+      --accent: #4af0c4;
+      --accent2: #7b6fff;
+      --text: #c8d8f0;
+      --muted: #3a4a68;
+    }
+
+    html, body {
+      height: 100%; width: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      overflow: hidden;
+    }
+
+    /* animated mesh background */
+    .mesh {
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(123,111,255,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(74,240,196,0.10) 0%, transparent 50%),
+        radial-gradient(ellipse at 60% 80%, rgba(74,240,196,0.06) 0%, transparent 40%);
+      animation: meshMove 12s ease-in-out infinite alternate;
+    }
+    @keyframes meshMove {
+      0%   { filter: hue-rotate(0deg); }
+      100% { filter: hue-rotate(25deg); }
+    }
+
+    .grid {
+      position: fixed; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(rgba(74,240,196,0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(74,240,196,0.035) 1px, transparent 1px);
+      background-size: 44px 44px;
+    }
+
+    /* page layout */
+    .page {
+      position: relative; z-index: 10;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      gap: 0;
+    }
+
+    /* avatar preview */
+    .avatar-preview {
+      position: relative;
+      margin-bottom: 28px;
+    }
+    .avatar-preview canvas {
+      display: block;
+      width: 160px;
+      height: 170px;
+      border-radius: 50%;
+      outline: 2px solid rgba(74,240,196,0.25);
+      outline-offset: 6px;
+    }
+    .avatar-ring {
+      position: absolute;
+      inset: -14px;
+      border-radius: 50%;
+      border: 1px solid rgba(74,240,196,0.15);
+      animation: ringPulse 3s ease-in-out infinite;
+    }
+    .avatar-ring2 {
+      position: absolute;
+      inset: -26px;
+      border-radius: 50%;
+      border: 1px solid rgba(123,111,255,0.1);
+      animation: ringPulse 3s ease-in-out infinite 1s;
+    }
+    @keyframes ringPulse {
+      0%, 100% { opacity: 0.4; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.04); }
+    }
+
+    /* text */
+    .brand {
+      font-family: 'Syne', sans-serif;
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+    .brand span { color: var(--accent); }
+
+    .tagline {
+      font-size: 13px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      margin-bottom: 36px;
+      text-align: center;
+    }
+
+    /* card */
+    .card {
+      width: 100%;
+      max-width: 360px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .card-label {
+      font-family: 'Syne', sans-serif;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+    }
+
+    input[type="password"] {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 13px 14px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      letter-spacing: 0.04em;
+    }
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(74,240,196,0.08);
+    }
+    input::placeholder { color: var(--muted); font-size: 13px; letter-spacing: 0; }
+    input.error { border-color: #ff6b6b; }
+
+    .hint {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .hint a { color: var(--accent); text-decoration: none; }
+
+    .connect-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      color: #060910;
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .connect-btn:hover { background: #2de0aa; box-shadow: 0 0 24px rgba(74,240,196,0.35); }
+    .connect-btn:active { transform: scale(0.98); }
+
+    .error-msg {
+      font-size: 12px;
+      color: #ff6b6b;
+      text-align: center;
+      display: none;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+    }
+  </style>
 </head>
 <body>
 
-  <div class="bg-grid"></div>
-  <div class="scan-line"></div>
+<div class="mesh"></div>
+<div class="grid"></div>
 
-  <header>
-    <div class="logo">ANIMA<span class="dot">●</span></div>
-    <div class="status-bar">
-      <span class="status-dot" id="statusDot"></span>
-      <span id="statusText">OFFLINE</span>
-    </div>
-  </header>
+<div class="page">
 
-  <main>
-    <section class="avatar-stage">
-      <div class="avatar-glow"></div>
-      <canvas id="avatarCanvas" width="300" height="320"></canvas>
-      <div class="expr-strip">
-        <button class="expr-btn" onclick="setExpression('happy')" title="Happy">😊</button>
-        <button class="expr-btn" onclick="setExpression('sad')" title="Sad">😢</button>
-        <button class="expr-btn" onclick="setExpression('angry')" title="Angry">😠</button>
-        <button class="expr-btn" onclick="setExpression('surprised')" title="Surprised">😲</button>
-        <button class="expr-btn" onclick="setExpression('neutral')" title="Neutral">😐</button>
-      </div>
-      <div class="expression-label" id="expressionLabel">NEUTRAL</div>
-    </section>
+  <div class="avatar-preview">
+    <div class="avatar-ring2"></div>
+    <div class="avatar-ring"></div>
+    <canvas id="previewCanvas" width="200" height="212"></canvas>
+  </div>
 
-    <section class="chat-panel">
-      <div class="chat-history" id="chatHistory">
-        <div class="message system">
-          <span>ANIMA online. Set your Groq API key to begin.</span>
-        </div>
-      </div>
+  <div class="brand">ANIMA<span>●</span></div>
+  <p class="tagline">AI · AVATAR · INTERFACE</p>
 
-      <div class="api-key-row" id="apiKeyRow">
-        <input type="password" id="apiKeyInput" placeholder="Groq API key  gsk_…" />
-        <button id="apiKeyBtn" onclick="setApiKey()">Connect</button>
-      </div>
+  <div class="card">
+    <span class="card-label">GROQ API KEY</span>
+    <input type="password" id="keyInput" placeholder="gsk_…" autocomplete="off" autocorrect="off" spellcheck="false"/>
+    <p class="hint">
+      Free key at <a href="https://console.groq.com" target="_blank">console.groq.com</a>.
+      Stored only in your browser.
+    </p>
+    <div class="divider"></div>
+    <p class="error-msg" id="errMsg">Invalid key format. Must start with gsk_</p>
+    <button class="connect-btn" onclick="connect()">CONNECT →</button>
+  </div>
 
-      <div class="input-row" id="inputRow" style="display:none">
-        <input type="text" id="userInput" placeholder="Say something…" onkeydown="if(event.key==='Enter') sendMessage()" />
-        <button id="sendBtn" onclick="sendMessage()">▶</button>
-        <button id="muteBtn" onclick="toggleMute()" title="Toggle voice">🔊</button>
-      </div>
-    </section>
-  </main>
+</div>
 
-  <script src="avatar.js"></script>
-  <script src="ai.js"></script>
+<script>
+// ── Tiny preview avatar (idle only) ──
+const pc = document.getElementById('previewCanvas');
+const pctx = pc.getContext('2d');
+const PW = pc.width, PH = pc.height;
+let pt = 0;
+
+function drawPreview() {
+  pctx.clearRect(0, 0, PW, PH);
+  const cx = PW / 2, cy = PH / 2 - 15 + Math.sin(pt * 0.018) * 2;
+
+  // Body
+  const bg = pctx.createLinearGradient(cx, cy+80, cx, cy+120);
+  bg.addColorStop(0, '#2a1280'); bg.addColorStop(1, '#130840');
+  pctx.fillStyle = bg;
+  pctx.beginPath();
+  pctx.moveTo(cx-16, cy+82);
+  pctx.bezierCurveTo(cx-55,cy+95,cx-100,cy+108,cx-110,cy+120);
+  pctx.lineTo(cx+110,cy+120); 
+  pctx.bezierCurveTo(cx+100,cy+108,cx+55,cy+95,cx+16,cy+82);
+  pctx.closePath(); pctx.fill();
+
+  // Neck
+  pctx.fillStyle='#f0bfa8';
+  pctx.beginPath(); pctx.moveTo(cx-13,cy+80); pctx.lineTo(cx-14,cy+100);
+  pctx.lineTo(cx+14,cy+100); pctx.lineTo(cx+13,cy+80); pctx.closePath(); pctx.fill();
+
+  // Hair back
+  const hg = pctx.createLinearGradient(cx-70,cy-90,cx+40,cy+40);
+  hg.addColorStop(0,'#5533cc'); hg.addColorStop(0.4,'#3a1a90'); hg.addColorStop(1,'#120830');
+  pctx.fillStyle=hg;
+  pctx.beginPath(); pctx.ellipse(cx,cy-8,68,78,0,0,Math.PI*2); pctx.fill();
+
+  // Ears
+  pctx.fillStyle='#f0bfa8';
+  [-62,62].forEach(dx => {
+    pctx.beginPath(); pctx.ellipse(cx+dx,cy+4,8,13,0,0,Math.PI*2); pctx.fill();
+  });
+
+  // Face
+  const fg = pctx.createLinearGradient(cx,cy-72,cx,cy+80);
+  fg.addColorStop(0,'#fce8d8'); fg.addColorStop(0.5,'#f5d0b8'); fg.addColorStop(1,'#ecb898');
+  pctx.fillStyle=fg;
+  pctx.beginPath(); pctx.ellipse(cx,cy-8,60,70,0,0,Math.PI*2); pctx.fill();
+  pctx.beginPath();
+  pctx.moveTo(cx-42,cy+44); pctx.quadraticCurveTo(cx-36,cy+76,cx,cy+80);
+  pctx.quadraticCurveTo(cx+36,cy+76,cx+42,cy+44);
+  pctx.fillStyle='#edb89a'; pctx.fill();
+
+  // Eyes (simple, with blink)
+  const blinkY = Math.abs(Math.sin(pt * 0.04)) > 0.97 ? 1 : 0;
+  [cx-22,cx+22].forEach(ex => {
+    const ey = cy - 8;
+    pctx.save();
+    pctx.beginPath(); pctx.ellipse(ex,ey,16,12*(1-blinkY*0.9),0,0,Math.PI*2); pctx.clip();
+    pctx.fillStyle='#fff'; pctx.fillRect(ex-16,ey-12,32,24);
+    const ig = pctx.createRadialGradient(ex-2,ey-3,1,ex,ey,10);
+    ig.addColorStop(0,'#c0eeff'); ig.addColorStop(0.35,'#5090ff');
+    ig.addColorStop(0.75,'#1a3aaa'); ig.addColorStop(1,'#070f30');
+    pctx.fillStyle=ig; pctx.beginPath(); pctx.arc(ex,ey,9,0,Math.PI*2); pctx.fill();
+    pctx.fillStyle='#040810'; pctx.beginPath(); pctx.arc(ex,ey,4,0,Math.PI*2); pctx.fill();
+    pctx.fillStyle='rgba(255,255,255,0.9)'; pctx.beginPath(); pctx.ellipse(ex-3,ey-3,3,2,-.4,0,Math.PI*2); pctx.fill();
+    pctx.restore();
+    // eyeliner
+    pctx.strokeStyle='#18082a'; pctx.lineWidth=2; pctx.lineCap='round';
+    pctx.beginPath(); pctx.moveTo(ex-17,ey); pctx.quadraticCurveTo(ex,ey-14,ex+17,ey); pctx.stroke();
+  });
+
+  // Eyebrows
+  pctx.strokeStyle='#28086a'; pctx.lineWidth=2.5; pctx.lineCap='round';
+  [[cx-22,-1],[cx+22,1]].forEach(([ex,d]) => {
+    pctx.beginPath(); pctx.moveTo(ex-12,cy-30); pctx.quadraticCurveTo(ex,cy-36,ex+12,cy-28); pctx.stroke();
+  });
+
+  // Nose
+  pctx.strokeStyle='#c8907a'; pctx.lineWidth=1.2;
+  pctx.beginPath(); pctx.moveTo(cx-3,cy+12); pctx.quadraticCurveTo(cx-6,cy+22,cx,cy+25);
+  pctx.quadraticCurveTo(cx+6,cy+22,cx+3,cy+12); pctx.stroke();
+
+  // Mouth (slight smile)
+  pctx.fillStyle='#cc7060';
+  pctx.beginPath();
+  pctx.moveTo(cx-15,cy+44); pctx.bezierCurveTo(cx-7,cy+38,cx+7,cy+38,cx+15,cy+44);
+  pctx.bezierCurveTo(cx+7,cy+50,cx-7,cy+50,cx-15,cy+44); pctx.closePath(); pctx.fill();
+
+  // Spiky hair front
+  const sg = pctx.createLinearGradient(cx-40,cy-100,cx+30,cy-50);
+  sg.addColorStop(0,'#6644dd'); sg.addColorStop(1,'#2a1270');
+  pctx.fillStyle=sg;
+  [{ox:-42,oy:-70,w:18,h:48,a:-.32},{ox:-22,oy:-82,w:17,h:60,a:-.1},
+   {ox:-2,oy:-88,w:18,h:66,a:0},{ox:20,oy:-82,w:17,h:58,a:.1},{ox:40,oy:-70,w:18,h:46,a:.3}
+  ].forEach(s=>{
+    pctx.save(); pctx.translate(cx+s.ox,cy+s.oy); pctx.rotate(s.a);
+    pctx.beginPath(); pctx.moveTo(0,0); pctx.lineTo(-s.w/2,s.h); pctx.quadraticCurveTo(0,s.h-8,s.w/2,s.h); pctx.closePath(); pctx.fill();
+    pctx.restore();
+  });
+
+  pt++;
+  requestAnimationFrame(drawPreview);
+}
+drawPreview();
+
+// ── Key validation ──
+function connect() {
+  const key = document.getElementById('keyInput').value.trim();
+  const inp = document.getElementById('keyInput');
+  const err = document.getElementById('errMsg');
+
+  if (!key.startsWith('gsk_') || key.length < 20) {
+    inp.classList.add('error');
+    err.style.display = 'block';
+    return;
+  }
+  inp.classList.remove('error');
+  err.style.display = 'none';
+  localStorage.setItem('anima_groq_key', key);
+  window.location.href = 'app.html';
+}
+
+document.getElementById('keyInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') connect();
+});
+
+// If key already set, go straight to app
+if (localStorage.getItem('anima_groq_key')) {
+  window.location.href = 'app.html';
+}
+</script>
 </body>
 </html>
