@@ -1,493 +1,444 @@
-/* avatar.js — 2D Anime Avatar Engine */
+/* avatar.js — 2D Anime Avatar Engine (mobile-optimised) */
 
 const AvatarEngine = (() => {
   const canvas = document.getElementById('avatarCanvas');
   const ctx = canvas.getContext('2d');
-  const W = canvas.width;
-  const H = canvas.height;
+  // Internal draw resolution (canvas attribute size)
+  const W = canvas.width;   // 300
+  const H = canvas.height;  // 320
+
+  const lerp = (a, b, t) => a + (b - a) * t;
 
   // ── STATE ──
   const state = {
-    expression: 'neutral', // neutral | happy | sad | angry | surprised | thinking
-    mouthOpen: 0,          // 0–1 (lip-sync)
-    blinkT: 0,
-    blinkDuration: 0,
-    nextBlink: 120,
-    breathY: 0,
-    breathT: 0,
-    eyebrowRaise: 0,       // target
-    eyebrowCurrent: 0,
-    eyeSquint: 0,
-    cheekFlush: 0,
-    swayX: 0,
-    swayT: 0,
+    expression: 'neutral',
+    mouthOpen: 0,
+    blinkT: 0, blinkDuration: 0, nextBlink: 100,
+    breathY: 0, breathT: 0,
+    swayX: 0, swayT: 0,
     frame: 0,
     speaking: false,
-    expressionT: 0,        // transition timer
   };
 
-  // ── EXPRESSION CONFIGS ──
   const EXPRESSIONS = {
-    neutral:   { eyebrow: 0,    squint: 0,    flush: 0,    mouthCurve: 0,    eyeOpen: 1.0, label: 'NEUTRAL' },
-    happy:     { eyebrow: -4,   squint: 0.4,  flush: 0.5,  mouthCurve: 1,    eyeOpen: 0.8, label: 'HAPPY' },
-    sad:       { eyebrow: 6,    squint: 0,    flush: 0,    mouthCurve: -1,   eyeOpen: 0.9, label: 'SAD' },
-    angry:     { eyebrow: 8,    squint: 0.3,  flush: 0.2,  mouthCurve: -0.5, eyeOpen: 0.85,label: 'ANGRY' },
-    surprised: { eyebrow: -10,  squint: -0.2, flush: 0.1,  mouthCurve: 0,    eyeOpen: 1.3, label: 'SURPRISED' },
-    thinking:  { eyebrow: -2,   squint: 0.1,  flush: 0,    mouthCurve: 0.2,  eyeOpen: 0.95,label: 'THINKING' },
+    neutral:   { eyebrow: 0,   squint: 0,    flush: 0,   mouthCurve: 0,    eyeOpen: 1.0,  label: 'NEUTRAL' },
+    happy:     { eyebrow: -5,  squint: 0.45, flush: 0.6, mouthCurve: 1,    eyeOpen: 0.75, label: 'HAPPY' },
+    sad:       { eyebrow: 7,   squint: 0,    flush: 0,   mouthCurve: -1,   eyeOpen: 0.9,  label: 'SAD' },
+    angry:     { eyebrow: 9,   squint: 0.35, flush: 0.2, mouthCurve: -0.6, eyeOpen: 0.85, label: 'ANGRY' },
+    surprised: { eyebrow: -12, squint: -0.3, flush: 0.1, mouthCurve: 0,    eyeOpen: 1.4,  label: 'SURPRISED' },
+    thinking:  { eyebrow: -3,  squint: 0.1,  flush: 0,   mouthCurve: 0.2,  eyeOpen: 0.95, label: 'THINKING' },
   };
 
-  let currentExpr = { ...EXPRESSIONS.neutral };
+  let cur = { ...EXPRESSIONS.neutral };
 
-  // ── HELPERS ──
-  const lerp = (a, b, t) => a + (b - a) * t;
-
-  function lerpExpr(target, speed = 0.06) {
+  function lerpExpr(target, s = 0.07) {
     const T = EXPRESSIONS[target] || EXPRESSIONS.neutral;
-    for (const k in T) {
-      if (typeof T[k] === 'number') {
-        currentExpr[k] = lerp(currentExpr[k], T[k], speed);
-      }
-    }
+    for (const k in T) if (typeof T[k] === 'number') cur[k] = lerp(cur[k], T[k], s);
   }
 
-  // ── HAIR DRAWING ──
-  function drawHair(cx, cy, eyeOpenFactor) {
-    // Back hair
-    ctx.save();
-    ctx.fillStyle = '#1a0a2e';
+  // ─────────────────────────────────────────
+  //  DRAW FUNCTIONS  (cx,cy = head centre)
+  // ─────────────────────────────────────────
+
+  function drawBody(cx, cy) {
+    // Neck
+    ctx.fillStyle = '#f0bfa8';
     ctx.beginPath();
-    ctx.ellipse(cx, cy - 12, 88, 105, 0, 0, Math.PI * 2);
+    ctx.moveTo(cx - 18, cy + 90);
+    ctx.lineTo(cx - 20, cy + 140);
+    ctx.lineTo(cx + 20, cy + 140);
+    ctx.lineTo(cx + 18, cy + 90);
+    ctx.closePath();
     ctx.fill();
 
-    // Hair shine
-    const hairGrad = ctx.createLinearGradient(cx - 60, cy - 80, cx + 40, cy + 20);
-    hairGrad.addColorStop(0, '#5533aa');
-    hairGrad.addColorStop(0.4, '#2a1060');
-    hairGrad.addColorStop(1, '#0d0520');
-    ctx.fillStyle = hairGrad;
+    // Shoulders / top of outfit
+    const bodyGrad = ctx.createLinearGradient(cx, cy + 130, cx, cy + 165);
+    bodyGrad.addColorStop(0, '#2a1280');
+    bodyGrad.addColorStop(1, '#130840');
+    ctx.fillStyle = bodyGrad;
     ctx.beginPath();
-    ctx.ellipse(cx, cy - 12, 86, 103, 0, 0, Math.PI * 2);
+    ctx.moveTo(cx - 20, cy + 130);
+    ctx.bezierCurveTo(cx - 70, cy + 142, cx - 120, cy + 152, cx - 155, cy + 165);
+    ctx.lineTo(cx + 155, cy + 165);
+    ctx.bezierCurveTo(cx + 120, cy + 152, cx + 70, cy + 142, cx + 20, cy + 130);
+    ctx.closePath();
     ctx.fill();
 
-    // Top spiky bangs
-    ctx.fillStyle = '#3d1a7a';
-    const spikes = [
-      { x: cx - 55, y: cy - 95, w: 22, h: 55, angle: -0.3 },
-      { x: cx - 30, y: cy - 110, w: 20, h: 65, angle: -0.08 },
-      { x: cx,      y: cy - 118, w: 22, h: 68, angle: 0 },
-      { x: cx + 28, y: cy - 110, w: 20, h: 62, angle: 0.1 },
-      { x: cx + 52, y: cy - 95,  w: 22, h: 52, angle: 0.3 },
-    ];
-    spikes.forEach(s => {
-      ctx.save();
-      ctx.translate(s.x, s.y);
-      ctx.rotate(s.angle);
+    // Collar highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - 18, cy + 130);
+    ctx.quadraticCurveTo(cx, cy + 148, cx + 18, cy + 130);
+    ctx.stroke();
+  }
+
+  function drawHairBack(cx, cy) {
+    // ── BACK HAIR (drawn first, behind everything) ──
+    const hg = ctx.createLinearGradient(cx - 90, cy - 100, cx + 60, cy + 60);
+    hg.addColorStop(0, '#5533cc');
+    hg.addColorStop(0.35, '#3a1a90');
+    hg.addColorStop(1, '#120830');
+    ctx.fillStyle = hg;
+
+    // Main hair mass
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 10, 90, 100, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Long side strands (left)
+    ctx.beginPath();
+    ctx.moveTo(cx - 82, cy - 20);
+    ctx.bezierCurveTo(cx - 108, cy + 20, cx - 105, cy + 75, cx - 78, cy + 110);
+    ctx.lineTo(cx - 60, cy + 108);
+    ctx.bezierCurveTo(cx - 88, cy + 70, ctx.x || cx - 90, cy + 18, cx - 68, cy - 18);
+    ctx.closePath();
+    ctx.fill();
+
+    // Long side strands (right)
+    ctx.beginPath();
+    ctx.moveTo(cx + 82, cy - 20);
+    ctx.bezierCurveTo(cx + 108, cy + 20, cx + 105, cy + 75, cx + 78, cy + 110);
+    ctx.lineTo(cx + 60, cy + 108);
+    ctx.bezierCurveTo(cx + 88, cy + 70, cx + 90, cy + 18, cx + 68, cy - 18);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawEars(cx, cy) {
+    ctx.fillStyle = '#f0bfa8';
+    [cx - 82, cx + 82].forEach((ex, i) => {
       ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(-s.w / 2, s.h);
-      ctx.lineTo(s.w / 2, s.h);
-      ctx.closePath();
+      ctx.ellipse(ex, cy + 5, 11, 17, i === 0 ? -0.1 : 0.1, 0, Math.PI * 2);
       ctx.fill();
-      ctx.restore();
+      ctx.strokeStyle = '#d09070'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(ex, cy + 7, 6, 10, 0, 0, Math.PI * 2); ctx.stroke();
     });
-
-    // Side hair strands
-    ctx.fillStyle = '#2a1060';
-    // Left strand
-    ctx.beginPath();
-    ctx.moveTo(cx - 80, cy - 40);
-    ctx.bezierCurveTo(cx - 100, cy + 10, cx - 95, cy + 60, cx - 75, cy + 80);
-    ctx.lineTo(cx - 60, cy + 80);
-    ctx.bezierCurveTo(cx - 80, cy + 55, cx - 85, cy + 5, cx - 65, cy - 35);
-    ctx.closePath();
-    ctx.fill();
-    // Right strand
-    ctx.beginPath();
-    ctx.moveTo(cx + 80, cy - 40);
-    ctx.bezierCurveTo(cx + 100, cy + 10, cx + 95, cy + 60, cx + 75, cy + 80);
-    ctx.lineTo(cx + 60, cy + 80);
-    ctx.bezierCurveTo(cx + 80, cy + 55, cx + 85, cy + 5, cx + 65, cy - 35);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.restore();
   }
 
-  // ── FACE ──
   function drawFace(cx, cy) {
-    // Shadow under face
-    const shadowGrad = ctx.createRadialGradient(cx, cy + 15, 20, cx, cy + 15, 90);
-    shadowGrad.addColorStop(0, 'rgba(0,0,0,0.25)');
-    shadowGrad.addColorStop(1, 'transparent');
-    ctx.fillStyle = shadowGrad;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + 20, 82, 60, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Base face
-    const faceGrad = ctx.createLinearGradient(cx, cy - 80, cx, cy + 80);
-    faceGrad.addColorStop(0, '#f5d5c8');
-    faceGrad.addColorStop(0.5, '#f0c5b0');
-    faceGrad.addColorStop(1, '#e8b09a');
-    ctx.fillStyle = faceGrad;
+    // Face shape — slightly oval with pointed chin
+    const fg = ctx.createLinearGradient(cx, cy - 90, cx, cy + 100);
+    fg.addColorStop(0, '#fce8d8');
+    fg.addColorStop(0.5, '#f5d0b8');
+    fg.addColorStop(1, '#ecb898');
+    ctx.fillStyle = fg;
 
     ctx.beginPath();
-    ctx.ellipse(cx, cy - 5, 78, 92, 0, 0, Math.PI * 2);
+    // Upper oval
+    ctx.ellipse(cx, cy - 10, 78, 88, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Chin/jaw taper
+    // Chin taper
     ctx.beginPath();
-    ctx.moveTo(cx - 60, cy + 45);
-    ctx.quadraticCurveTo(cx - 55, cy + 95, cx, cy + 100);
-    ctx.quadraticCurveTo(cx + 55, cy + 95, cx + 60, cy + 45);
-    ctx.fillStyle = '#eab89e';
+    ctx.moveTo(cx - 55, cy + 55);
+    ctx.quadraticCurveTo(cx - 48, cy + 98, cx, cy + 105);
+    ctx.quadraticCurveTo(cx + 48, cy + 98, cx + 55, cy + 55);
+    ctx.fillStyle = '#edb89a';
     ctx.fill();
 
-    // Cheek flush
-    if (currentExpr.flush > 0.01) {
+    // Cheek blush
+    if (cur.flush > 0.02) {
       ctx.save();
-      ctx.globalAlpha = currentExpr.flush * 0.45;
-      const cheekCol = ctx.createRadialGradient(cx - 48, cy + 25, 0, cx - 48, cy + 25, 30);
-      cheekCol.addColorStop(0, '#ff8888');
-      cheekCol.addColorStop(1, 'transparent');
-      ctx.fillStyle = cheekCol;
-      ctx.beginPath(); ctx.ellipse(cx - 48, cy + 25, 28, 18, 0, 0, Math.PI * 2); ctx.fill();
-      const cheekColR = ctx.createRadialGradient(cx + 48, cy + 25, 0, cx + 48, cy + 25, 30);
-      cheekColR.addColorStop(0, '#ff8888');
-      cheekColR.addColorStop(1, 'transparent');
-      ctx.fillStyle = cheekColR;
-      ctx.beginPath(); ctx.ellipse(cx + 48, cy + 25, 28, 18, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = cur.flush * 0.5;
+      [cx - 52, cx + 52].forEach(bx => {
+        const bg = ctx.createRadialGradient(bx, cy + 28, 0, bx, cy + 28, 32);
+        bg.addColorStop(0, '#ff7777'); bg.addColorStop(1, 'transparent');
+        ctx.fillStyle = bg;
+        ctx.beginPath(); ctx.ellipse(bx, cy + 28, 28, 16, 0, 0, Math.PI * 2); ctx.fill();
+      });
       ctx.restore();
     }
   }
 
-  // ── EYES ──
   function drawEyes(cx, cy) {
-    const eyeOpenFactor = currentExpr.eyeOpen;
-    const eyeH = 14 * eyeOpenFactor;
-    const squint = currentExpr.squint;
+    // Anime eyes: wider, taller, more expressive
+    const eh = 16 * Math.max(0.1, cur.eyeOpen);
+    const ew = 22;
 
-    [cx - 28, cx + 28].forEach((ex, i) => {
-      const ey = cy - 15 + (i === 0 ? state.eyebrowCurrent * 0.3 : -state.eyebrowCurrent * 0.1);
+    [cx - 30, cx + 30].forEach((ex, i) => {
+      const ey = cy - 10;
 
-      // Eye white
-      ctx.save();
-      ctx.fillStyle = '#fff';
-      ctx.beginPath();
-      ctx.ellipse(ex, ey, 18, eyeH, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      // Iris gradient
-      const irisGrad = ctx.createRadialGradient(ex - 2, ey - 2, 1, ex, ey, 12);
-      irisGrad.addColorStop(0, '#a0e8ff');
-      irisGrad.addColorStop(0.4, '#4080ff');
-      irisGrad.addColorStop(0.8, '#1a3080');
-      irisGrad.addColorStop(1, '#0a1040');
-      ctx.fillStyle = irisGrad;
+      // Clip to eye shape
       ctx.save();
       ctx.beginPath();
-      ctx.ellipse(ex, ey, 18, eyeH, 0, 0, Math.PI * 2);
+      ctx.ellipse(ex, ey, ew, eh, 0, 0, Math.PI * 2);
       ctx.clip();
-      ctx.beginPath();
-      ctx.arc(ex, ey, 11, 0, Math.PI * 2);
-      ctx.fill();
+
+      // White
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(ex - ew, ey - eh, ew * 2, eh * 2);
+
+      // Iris
+      const ig = ctx.createRadialGradient(ex - 3, ey - 4, 1, ex, ey, 14);
+      ig.addColorStop(0, '#c0eeff');
+      ig.addColorStop(0.3, '#5090ff');
+      ig.addColorStop(0.7, '#1a3aaa');
+      ig.addColorStop(1, '#070f30');
+      ctx.fillStyle = ig;
+      ctx.beginPath(); ctx.arc(ex, ey, 13, 0, Math.PI * 2); ctx.fill();
 
       // Pupil
-      ctx.fillStyle = '#050510';
+      ctx.fillStyle = '#040810';
+      ctx.beginPath(); ctx.arc(ex, ey, 6, 0, Math.PI * 2); ctx.fill();
+
+      // Iris ring
+      ctx.strokeStyle = 'rgba(80,140,255,0.5)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(ex, ey, 12, 0, Math.PI * 2); ctx.stroke();
+
+      // Specular highlights
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.beginPath(); ctx.ellipse(ex - 4, ey - 5, 4, 3, -0.4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.beginPath(); ctx.ellipse(ex + 5, ey + 3, 2, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+
+      ctx.restore(); // end clip
+
+      // Upper eyelid (blink / squint)
+      const blinkAmt = Math.max(state.blinkT, Math.max(0, cur.squint));
+      if (blinkAmt > 0) {
+        ctx.fillStyle = '#f5d0b8';
+        ctx.beginPath();
+        ctx.ellipse(ex, ey - eh * (1 - blinkAmt), ew + 2, eh + 3, 0, Math.PI, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Eyeliner top
+      ctx.strokeStyle = '#18082a'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.arc(ex, ey, 5.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Eye shine
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.beginPath(); ctx.ellipse(ex - 3, ey - 3, 3.5, 2.5, -0.5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
-      ctx.beginPath(); ctx.ellipse(ex + 4, ey + 2, 1.5, 1, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-
-      // Upper eyelid (blink + squint)
-      const blinkClose = state.blinkT > 0 ? state.blinkT : 0;
-      const squintClose = squint > 0 ? squint : 0;
-      const lidClose = Math.max(blinkClose, squintClose);
-
-      ctx.fillStyle = '#f0c5b0';
+      ctx.moveTo(ex - ew - 2, ey);
+      ctx.quadraticCurveTo(ex, ey - eh - 4, ex + ew + 2, ey);
+      ctx.stroke();
+      // Wing
       ctx.beginPath();
-      ctx.ellipse(ex, ey - eyeH * (1 - lidClose), 19, eyeH + 2, 0, Math.PI, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(ex + ew, ey - 2);
+      ctx.lineTo(ex + ew + 6 * (i === 0 ? -1 : 1), ey - 6);
+      ctx.stroke();
 
-      // Eyelashes (top)
-      ctx.strokeStyle = '#1a0a2e';
-      ctx.lineWidth = 2;
-      ctx.lineCap = 'round';
-      for (let l = -3; l <= 3; l++) {
-        const lx = ex + l * 5;
-        const ly = ey - eyeH;
+      // Lashes
+      ctx.lineWidth = 1.8;
+      for (let l = -4; l <= 4; l++) {
+        const lx = ex + l * 4.5;
+        const ly = ey - eh + 1;
         ctx.beginPath();
         ctx.moveTo(lx, ly);
-        ctx.lineTo(lx + l * 1.5, ly - 5 - Math.abs(l) * 0.5);
+        ctx.lineTo(lx + l * 0.8, ly - 5);
         ctx.stroke();
       }
 
-      // Eyeliner
-      ctx.strokeStyle = '#1a0a2e';
-      ctx.lineWidth = 1.5;
+      // Lower lash line (subtle)
+      ctx.strokeStyle = 'rgba(24,8,42,0.35)'; ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.ellipse(ex, ey, 19, eyeH + 1, 0, Math.PI * 1.1, Math.PI * 2 - 0.1);
+      ctx.ellipse(ex, ey + 1, ew - 2, eh * 0.4, 0, 0, Math.PI);
       ctx.stroke();
     });
   }
 
-  // ── EYEBROWS ──
   function drawEyebrows(cx, cy) {
-    const raise = state.eyebrowCurrent;
-    const angryTilt = state.expression === 'angry' ? 0.3 : 0;
+    const raise = cur.eyebrow;
+    const angerAngle = state.expression === 'angry' ? 0.28 : 0;
+    ctx.lineWidth = 3.5; ctx.lineCap = 'round';
 
-    ctx.strokeStyle = '#2a1060';
-    ctx.lineWidth = 3.5;
-    ctx.lineCap = 'round';
-
-    // Left brow
-    ctx.save();
-    ctx.translate(cx - 28, cy - 36 - raise);
-    ctx.rotate(angryTilt);
-    ctx.beginPath();
-    ctx.moveTo(-14, 4);
-    ctx.quadraticCurveTo(0, -4, 14, 2);
-    ctx.stroke();
-    ctx.restore();
-
-    // Right brow
-    ctx.save();
-    ctx.translate(cx + 28, cy - 36 - raise);
-    ctx.rotate(-angryTilt);
-    ctx.beginPath();
-    ctx.moveTo(-14, 2);
-    ctx.quadraticCurveTo(0, -4, 14, 4);
-    ctx.stroke();
-    ctx.restore();
+    [{ x: cx - 30, dir: 1 }, { x: cx + 30, dir: -1 }].forEach(({ x, dir }) => {
+      ctx.save();
+      ctx.translate(x, cy - 38 - raise);
+      ctx.rotate(dir * angerAngle);
+      const bg = ctx.createLinearGradient(-16, 0, 16, 0);
+      bg.addColorStop(0, '#28086a');
+      bg.addColorStop(1, '#3d1890');
+      ctx.strokeStyle = bg;
+      ctx.beginPath();
+      ctx.moveTo(-16, 4);
+      ctx.quadraticCurveTo(0, -6, 16, 2);
+      ctx.stroke();
+      ctx.restore();
+    });
   }
 
-  // ── NOSE ──
   function drawNose(cx, cy) {
-    ctx.strokeStyle = '#c89070';
-    ctx.lineWidth = 1.5;
-    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#c8907a'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(cx - 5, cy + 15);
-    ctx.quadraticCurveTo(cx - 8, cy + 28, cx, cy + 30);
-    ctx.quadraticCurveTo(cx + 8, cy + 28, cx + 5, cy + 15);
+    ctx.moveTo(cx - 4, cy + 18);
+    ctx.quadraticCurveTo(cx - 8, cy + 30, cx, cy + 33);
+    ctx.quadraticCurveTo(cx + 8, cy + 30, cx + 4, cy + 18);
     ctx.stroke();
   }
 
-  // ── MOUTH ──
   function drawMouth(cx, cy) {
-    const curve = currentExpr.mouthCurve;
-    const mouthOpen = state.mouthOpen;
-    const my = cy + 55;
-    const mw = 22;
+    const c = cur.mouthCurve;
+    const o = state.mouthOpen;
+    const my = cy + 58;
+    const mw = 20;
 
-    // Lips base
-    ctx.fillStyle = '#d4806a';
-    ctx.beginPath();
+    ctx.fillStyle = '#cc7060';
     // Upper lip
+    ctx.beginPath();
     ctx.moveTo(cx - mw, my);
-    ctx.bezierCurveTo(cx - mw * 0.5, my - 5 - curve * 5, cx + mw * 0.5, my - 5 - curve * 5, cx + mw, my);
+    ctx.bezierCurveTo(cx - mw * 0.5, my - 5 - c * 5, cx + mw * 0.5, my - 5 - c * 5, cx + mw, my);
     // Lower lip
-    ctx.bezierCurveTo(cx + mw * 0.5, my + 8 + mouthOpen * 12 + curve * 4,
-                      cx - mw * 0.5, my + 8 + mouthOpen * 12 + curve * 4,
-                      cx - mw, my);
-    ctx.closePath();
-    ctx.fill();
+    ctx.bezierCurveTo(cx + mw * 0.5, my + 7 + o * 14 + c * 4, cx - mw * 0.5, my + 7 + o * 14 + c * 4, cx - mw, my);
+    ctx.closePath(); ctx.fill();
 
-    // Mouth interior when open
-    if (mouthOpen > 0.05) {
+    // Interior
+    if (o > 0.05) {
       ctx.fillStyle = '#1a0510';
       ctx.save();
-      ctx.beginPath();
-      ctx.ellipse(cx, my + mouthOpen * 4, mw * 0.7, mouthOpen * 10, 0, 0, Math.PI * 2);
-      ctx.fill();
-      // Teeth
-      ctx.fillStyle = '#f5f0e8';
-      ctx.beginPath();
-      ctx.ellipse(cx, my + 2, mw * 0.6, mouthOpen * 5 + 1, 0, 0, Math.PI);
-      ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx, my + o * 5, mw * 0.72, o * 11, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f8f0e0';
+      ctx.beginPath(); ctx.ellipse(cx, my + 1, mw * 0.62, o * 4.5 + 1, 0, 0, Math.PI); ctx.fill();
       ctx.restore();
     }
 
-    // Lip shine
-    ctx.fillStyle = 'rgba(255,220,200,0.35)';
-    ctx.beginPath();
-    ctx.ellipse(cx, my - 1, mw * 0.5, 2.5, 0, 0, Math.PI);
-    ctx.fill();
+    // Shine
+    ctx.fillStyle = 'rgba(255,230,210,0.4)';
+    ctx.beginPath(); ctx.ellipse(cx, my - 1, mw * 0.45, 2.5, 0, 0, Math.PI); ctx.fill();
 
-    // Smile lines
-    if (Math.abs(curve) > 0.3) {
-      ctx.strokeStyle = '#c07060';
-      ctx.lineWidth = 1;
-      ctx.globalAlpha = Math.abs(curve) * 0.5;
-      [-1, 1].forEach(side => {
+    // Dimples on smile
+    if (c > 0.5) {
+      ctx.strokeStyle = '#b06050'; ctx.lineWidth = 1; ctx.globalAlpha = c * 0.45;
+      [-1, 1].forEach(s => {
         ctx.beginPath();
-        ctx.moveTo(cx + side * mw, my);
-        ctx.quadraticCurveTo(cx + side * (mw + 10), my + curve * 5, cx + side * (mw + 5), my + 12);
+        ctx.moveTo(cx + s * mw, my);
+        ctx.quadraticCurveTo(cx + s * (mw + 9), my + c * 5, cx + s * (mw + 5), my + 11);
         ctx.stroke();
       });
       ctx.globalAlpha = 1;
     }
   }
 
-  // ── EAR + NECK ──
-  function drawEarNeck(cx, cy) {
-    // Neck
-    ctx.fillStyle = '#eab89e';
-    ctx.beginPath();
-    ctx.moveTo(cx - 22, cy + 95);
-    ctx.bezierCurveTo(cx - 24, cy + 130, cx - 20, cy + 150, cx - 18, cy + 160);
-    ctx.lineTo(cx + 18, cy + 160);
-    ctx.bezierCurveTo(cx + 20, cy + 150, cx + 24, cy + 130, cx + 22, cy + 95);
-    ctx.closePath();
-    ctx.fill();
+  function drawHairFront(cx, cy) {
+    // Spiky top bangs (drawn over face)
+    const hg = ctx.createLinearGradient(cx - 50, cy - 110, cx + 50, cy - 60);
+    hg.addColorStop(0, '#6644dd');
+    hg.addColorStop(1, '#2a1270');
 
-    // Ears
-    [cx - 78, cx + 78].forEach((ex, i) => {
-      ctx.fillStyle = '#ebb89e';
+    const spikes = [
+      { ox: -56, oy: -88, w: 24, h: 62, a: -0.32 },
+      { ox: -32, oy: -106, w: 22, h: 78, a: -0.1 },
+      { ox: -4,  oy: -115, w: 24, h: 85, a: 0 },
+      { ox: 28,  oy: -108, w: 22, h: 76, a: 0.1 },
+      { ox: 52,  oy: -90,  w: 24, h: 60, a: 0.3 },
+    ];
+
+    ctx.fillStyle = hg;
+    spikes.forEach(s => {
+      ctx.save();
+      ctx.translate(cx + s.ox, cy + s.oy);
+      ctx.rotate(s.a);
       ctx.beginPath();
-      ctx.ellipse(ex, cy + 5, 10, 16, i === 0 ? -0.1 : 0.1, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#c89070';
-      ctx.lineWidth = 1;
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-s.w / 2, s.h);
+      ctx.quadraticCurveTo(0, s.h - 10, s.w / 2, s.h);
+      ctx.closePath(); ctx.fill();
+
+      // Spike highlight
+      ctx.fillStyle = 'rgba(140,100,255,0.3)';
       ctx.beginPath();
-      ctx.ellipse(ex, cy + 5, 6, 10, 0, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.moveTo(-2, 0);
+      ctx.lineTo(-s.w * 0.35, s.h * 0.6);
+      ctx.lineTo(s.w * 0.1, s.h * 0.5);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = hg;
+      ctx.restore();
     });
+
+    // Fringe strands crossing forehead
+    ctx.fillStyle = '#3a1888';
+    // Left fringe
+    ctx.beginPath();
+    ctx.moveTo(cx - 20, cy - 105);
+    ctx.bezierCurveTo(cx - 36, cy - 80, cx - 42, cy - 50, cx - 36, cy - 28);
+    ctx.lineTo(cx - 24, cy - 26);
+    ctx.bezierCurveTo(cx - 30, cy - 48, cx - 24, cy - 78, cx - 8, cy - 103);
+    ctx.closePath(); ctx.fill();
+
+    // Right fringe
+    ctx.beginPath();
+    ctx.moveTo(cx + 12, cy - 108);
+    ctx.bezierCurveTo(cx + 22, cy - 82, cx + 18, cy - 52, cx + 16, cy - 30);
+    ctx.lineTo(cx + 26, cy - 28);
+    ctx.bezierCurveTo(cx + 28, cy - 50, cx + 32, cy - 80, cx + 22, cy - 106);
+    ctx.closePath(); ctx.fill();
+
+    // Hair shine
+    ctx.save();
+    ctx.globalAlpha = 0.18;
+    const shine = ctx.createLinearGradient(cx - 40, cy - 100, cx + 20, cy - 40);
+    shine.addColorStop(0, '#fff');
+    shine.addColorStop(1, 'transparent');
+    ctx.fillStyle = shine;
+    ctx.beginPath(); ctx.ellipse(cx - 15, cy - 70, 30, 38, -0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
   }
 
-  // ── BODY / SHOULDERS ──
-  function drawBody(cx, cy) {
-    const bodyY = cy + 160;
-    // Collarbone
-    const bodyGrad = ctx.createLinearGradient(cx, bodyY, cx, bodyY + 80);
-    bodyGrad.addColorStop(0, '#1e1060');
-    bodyGrad.addColorStop(1, '#0d0830');
-    ctx.fillStyle = bodyGrad;
-
-    ctx.beginPath();
-    ctx.moveTo(cx - 18, bodyY);
-    ctx.bezierCurveTo(cx - 60, bodyY + 15, cx - 110, bodyY + 35, cx - 130, bodyY + 80);
-    ctx.lineTo(cx + 130, bodyY + 80);
-    ctx.bezierCurveTo(cx + 110, bodyY + 35, cx + 60, bodyY + 15, cx + 18, bodyY);
-    ctx.closePath();
-    ctx.fill();
-
-    // Collar
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx.beginPath();
-    ctx.moveTo(cx - 18, bodyY);
-    ctx.bezierCurveTo(cx - 5, bodyY + 25, cx + 5, bodyY + 25, cx + 18, bodyY);
-    ctx.lineTo(cx + 25, bodyY + 50);
-    ctx.lineTo(cx, bodyY + 45);
-    ctx.lineTo(cx - 25, bodyY + 50);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  // ── MAIN DRAW ──
+  // ─────────────────────────────────────────
+  //  MAIN DRAW
+  // ─────────────────────────────────────────
   function draw() {
     ctx.clearRect(0, 0, W, H);
 
-    // Background subtle glow
-    const bg = ctx.createRadialGradient(W/2, H/2, 40, W/2, H/2, 180);
-    bg.addColorStop(0, 'rgba(74,240,196,0.04)');
-    bg.addColorStop(1, 'transparent');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, W, H);
-
     const cx = W / 2 + state.swayX;
-    const cy = H / 2 - 40 + state.breathY;
+    const cy = H / 2 - 30 + state.breathY;
 
     drawBody(cx, cy);
-    drawEarNeck(cx, cy);
-    drawHair(cx, cy, currentExpr.eyeOpen);
+    drawHairBack(cx, cy);
+    drawEars(cx, cy);
     drawFace(cx, cy);
     drawNose(cx, cy);
     drawEyebrows(cx, cy);
     drawEyes(cx, cy);
     drawMouth(cx, cy);
-
-    // Hair on top of face (front strands)
-    ctx.fillStyle = '#3d1a7a';
-    ctx.beginPath();
-    ctx.moveTo(cx - 20, cy - 105);
-    ctx.bezierCurveTo(cx - 35, cy - 80, cx - 40, cy - 50, cx - 35, cy - 30);
-    ctx.lineTo(cx - 25, cy - 28);
-    ctx.bezierCurveTo(cx - 30, cy - 48, cx - 25, cy - 78, cx - 10, cy - 103);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = '#2a1060';
-    ctx.beginPath();
-    ctx.moveTo(cx + 10, cy - 108);
-    ctx.bezierCurveTo(cx + 20, cy - 85, ctx.x, cy - 55, cx + 18, cy - 35);
-    ctx.lineTo(cx + 28, cy - 33);
-    ctx.bezierCurveTo(cx + 20, cy - 53, cx + 28, cy - 83, cx + 20, cy - 106);
-    ctx.closePath();
-    ctx.fill();
+    drawHairFront(cx, cy);
   }
 
-  // ── ANIMATION LOOP ──
+  // ─────────────────────────────────────────
+  //  ANIMATION LOOP
+  // ─────────────────────────────────────────
   function animate() {
     state.frame++;
 
     // Breathing
-    state.breathT += 0.018;
-    state.breathY = Math.sin(state.breathT) * 3;
+    state.breathT += 0.017;
+    state.breathY = Math.sin(state.breathT) * 2.5;
 
-    // Sway
-    state.swayT += 0.008;
-    state.swayX = Math.sin(state.swayT) * 2;
+    // Gentle sway
+    state.swayT += 0.007;
+    state.swayX = Math.sin(state.swayT) * 1.8;
 
     // Blink
     state.nextBlink--;
     if (state.nextBlink <= 0 && state.blinkT === 0) {
-      state.blinkDuration = 8;
-      state.nextBlink = 140 + Math.random() * 120;
+      state.blinkDuration = 9;
+      state.nextBlink = 130 + Math.floor(Math.random() * 130);
     }
     if (state.blinkDuration > 0) {
-      const half = 4;
-      state.blinkT = state.blinkDuration > half
-        ? 1 - (state.blinkDuration - half) / half
-        : state.blinkDuration / half;
+      const h = 4;
+      state.blinkT = state.blinkDuration > h
+        ? 1 - (state.blinkDuration - h) / h
+        : state.blinkDuration / h;
       state.blinkDuration--;
       if (state.blinkDuration <= 0) state.blinkT = 0;
     }
 
-    // Expression lerp
     lerpExpr(state.expression);
-    state.eyebrowCurrent = lerp(state.eyebrowCurrent, currentExpr.eyebrow || 0, 0.08);
-
     draw();
     requestAnimationFrame(animate);
   }
 
   animate();
 
-  // ── PUBLIC API ──
+  // ─────────────────────────────────────────
+  //  PUBLIC API
+  // ─────────────────────────────────────────
   return {
     setExpression(expr) {
       state.expression = expr;
-      const label = document.getElementById('expressionLabel');
-      if (label && EXPRESSIONS[expr]) label.textContent = EXPRESSIONS[expr].label;
+      const el = document.getElementById('expressionLabel');
+      if (el && EXPRESSIONS[expr]) el.textContent = EXPRESSIONS[expr].label;
     },
-    setMouth(val) {
-      state.mouthOpen = Math.max(0, Math.min(1, val));
-    },
-    getMouthOpen() { return state.mouthOpen; },
+    setMouth(v) { state.mouthOpen = Math.max(0, Math.min(1, v)); },
   };
 })();
 
-// Expose globally
 window.AvatarEngine = AvatarEngine;
-
-function setExpression(expr) {
-  AvatarEngine.setExpression(expr);
-}
+function setExpression(expr) { AvatarEngine.setExpression(expr); }
