@@ -23,7 +23,14 @@
   <main>
     <section class="avatar-stage">
       <div class="avatar-glow"></div>
-      <canvas id="avatarCanvas" width="340" height="380"></canvas>
+      <canvas id="avatarCanvas" width="300" height="320"></canvas>
+      <div class="expr-strip">
+        <button class="expr-btn" onclick="setExpression('happy')" title="Happy">😊</button>
+        <button class="expr-btn" onclick="setExpression('sad')" title="Sad">😢</button>
+        <button class="expr-btn" onclick="setExpression('angry')" title="Angry">😠</button>
+        <button class="expr-btn" onclick="setExpression('surprised')" title="Surprised">😲</button>
+        <button class="expr-btn" onclick="setExpression('neutral')" title="Neutral">😐</button>
+      </div>
       <div class="expression-label" id="expressionLabel">NEUTRAL</div>
     </section>
 
@@ -35,15 +42,11 @@
       </div>
 
       <div class="api-key-row" id="apiKeyRow">
-        <input type="password" id="apiKeyInput" placeholder="sk-groq-xxxx  (stored locally only)" />
+        <input type="password" id="apiKeyInput" placeholder="Groq API key  gsk_…" />
         <button id="apiKeyBtn" onclick="setApiKey()">Connect</button>
       </div>
 
       <div class="input-row" id="inputRow" style="display:none">
-        <button class="expr-btn" onclick="setExpression('happy')" title="Happy">😊</button>
-        <button class="expr-btn" onclick="setExpression('sad')" title="Sad">😢</button>
-        <button class="expr-btn" onclick="setExpression('angry')" title="Angry">😠</button>
-        <button class="expr-btn" onclick="setExpression('surprised')" title="Surprised">😲</button>
         <input type="text" id="userInput" placeholder="Say something…" onkeydown="if(event.key==='Enter') sendMessage()" />
         <button id="sendBtn" onclick="sendMessage()">▶</button>
         <button id="muteBtn" onclick="toggleMute()" title="Toggle voice">🔊</button>
