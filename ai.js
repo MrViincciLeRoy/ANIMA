@@ -8,7 +8,7 @@ const AI = (() => {
   const history = [];
 
   const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-  const MODEL = 'llama3-70b-8192';
+  const MODEL = 'llama3-8b-8192';
 
   const SYSTEM = `You are ANIMA, a warm and expressive anime-style AI companion.
 You are helpful, curious, and emotionally intelligent. Keep responses concise (2-4 sentences).
