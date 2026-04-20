@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ANIMA — AI Avatar</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <div class="bg-grid"></div>
+  <div class="scan-line"></div>
+
+  <header>
+    <div class="logo">ANIMA<span class="dot">●</span></div>
+    <div class="status-bar">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">OFFLINE</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="avatar-stage">
+      <div class="avatar-glow"></div>
+      <canvas id="avatarCanvas" width="340" height="380"></canvas>
+      <div class="expression-label" id="expressionLabel">NEUTRAL</div>
+    </section>
+
+    <section class="chat-panel">
+      <div class="chat-history" id="chatHistory">
+        <div class="message system">
+          <span>ANIMA online. Set your Groq API key to begin.</span>
+        </div>
+      </div>
+
+      <div class="api-key-row" id="apiKeyRow">
+        <input type="password" id="apiKeyInput" placeholder="sk-groq-xxxx  (stored locally only)" />
+        <button id="apiKeyBtn" onclick="setApiKey()">Connect</button>
+      </div>
+
+      <div class="input-row" id="inputRow" style="display:none">
+        <button class="expr-btn" onclick="setExpression('happy')" title="Happy">😊</button>
+        <button class="expr-btn" onclick="setExpression('sad')" title="Sad">😢</button>
+        <button class="expr-btn" onclick="setExpression('angry')" title="Angry">😠</button>
+        <button class="expr-btn" onclick="setExpression('surprised')" title="Surprised">😲</button>
+        <input type="text" id="userInput" placeholder="Say something…" onkeydown="if(event.key==='Enter') sendMessage()" />
+        <button id="sendBtn" onclick="sendMessage()">▶</button>
+        <button id="muteBtn" onclick="toggleMute()" title="Toggle voice">🔊</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="avatar.js"></script>
+  <script src="ai.js"></script>
+</body>
+</html>
